@@ -27,7 +27,7 @@ pub fn execute<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::Result<(
     output(&data, &mut writer);
 
     let duration = SystemTime::now().duration_since(start).unwrap();
-    writeln!(writer, "\n\nDuration: {:?}, Lines: {}", duration, count).unwrap();
+    println!("\n\nDuration: {:?}, Lines: {}", duration, count);
 
     Ok(())
 }
