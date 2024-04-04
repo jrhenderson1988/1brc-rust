@@ -29,57 +29,64 @@ impl Display for Values {
 
 pub struct StationData {
     data: HashMap<String, Values>,
+    data_bytes: HashMap<Vec<u8>, Values>,
 }
 
 impl StationData {
     pub fn new() -> Self {
-        Self { data: HashMap::new() }
+        Self { data: HashMap::new(), data_bytes: HashMap::new() }
     }
 
-    pub fn consume_line(&mut self, line: &str) {
-        let (name, reading) = self.parse_line(&line);
-        if let Some(v) = self.data.get_mut(&name) {
+    pub fn consume_line_bytes(&mut self, line: &[u8]) {
+        let (name, reading) = self.parse_line_bytes(line);
+        if let Some(v) = self.data_bytes.get_mut(&name) {
             v.add(reading);
         } else {
-            self.data.insert(name, Values::new(reading));
+            self.data_bytes.insert(name, Values::new(reading));
         }
     }
 
-    pub fn sorted_keys(&self) -> Vec<String> {
-        let mut keys: Vec<String> = self.data.keys().map(|k| k.clone()).collect();
+    pub fn sorted_keys_bytes(&self) -> Vec<Vec<u8>> {
+        let mut keys: Vec<Vec<u8>> = self.data_bytes.keys().map(|v| v.clone()).collect();
         keys.sort();
 
         keys
     }
 
-    pub fn min_for(&self, name: &str) -> f64 {
-        match self.data.get(name) {
+    pub fn min_for_bytes(&self, name: &[u8]) -> f64 {
+        match self.data_bytes.get(name) {
             None => 0.0,
             Some(v) => v.min,
         }
     }
 
-    pub fn max_for(&self, name: &str) -> f64 {
-        match self.data.get(name) {
+    pub fn max_for_bytes(&self, name: &[u8]) -> f64 {
+        match self.data_bytes.get(name) {
             None => 0.0,
             Some(v) => v.max,
         }
     }
 
-    pub fn mean_for(&self, name: &str) -> f64 {
-        match self.data.get(name) {
+    pub fn mean_for_bytes(&self, name: &[u8]) -> f64 {
+        match self.data_bytes.get(name) {
             None => 0.0,
             Some(v) => v.sum / (v.count as f64),
         }
     }
 
-    fn parse_line(&self, s: &str) -> (String, f64) {
-        let parts: Vec<&str> = s.split(";").collect();
-        let name = parts.first().unwrap();
-        let reading = parts.last().unwrap();
-        let reading: f64 = reading.parse().unwrap();
-
-        (name.to_string(), reading)
+    fn parse_line_bytes(&self, line: &[u8]) -> (Vec<u8>, f64) {
+        for i in 0..line.len() {
+            let ch = line[i];
+            if ch == b';' {
+                let name = line[0..i].to_vec();
+                let mut reading: f64 = String::from_utf8(line[i + 1..line.len()].to_vec())
+                    .unwrap()
+                    .parse()
+                    .unwrap();
+                return (name, reading);
+            }
+        }
+        panic!("invalid line");
     }
 }
 

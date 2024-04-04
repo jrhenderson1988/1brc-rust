@@ -20,11 +20,12 @@ pub fn execute<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::Result<(
     let mut count = 0;
     for line in reader.lines() {
         let line = line?;
-        data.consume_line(&line);
+        let line = line.as_bytes();
+        data.consume_line_bytes(line);
         count += 1;
     }
 
-    output(&data, &mut writer);
+    output_bytes(&data, &mut writer);
 
     let duration = SystemTime::now().duration_since(start).unwrap();
     println!("\n\nDuration: {:?}, Lines: {}", duration, count);
@@ -50,22 +51,21 @@ fn read<P: AsRef<Path>>(path: P) -> io::Result<()> {
     Ok(())
 }
 
-fn output<W: Write>(data: &StationData, writer: &mut W) {
-    println!("{}", data);
+fn output_bytes<W: Write>(data: &StationData, writer: &mut W) {
     write!(writer, "{{").unwrap();
 
     let mut first = true;
-    for k in data.sorted_keys() {
+    for k in data.sorted_keys_bytes() {
         if first {
             first = false;
         } else {
             write!(writer, ", ").unwrap();
         }
 
-        let min = data.min_for(&k);
-        let mean = data.mean_for(&k);
-        let max = data.max_for(&k);
-        write!(writer, "{}={:.1}/{:.1}/{:.1}", k, min, mean, max).unwrap();
+        let min = data.min_for_bytes(&k);
+        let mean = data.mean_for_bytes(&k);
+        let max = data.max_for_bytes(&k);
+        write!(writer, "{}={:.1}/{:.1}/{:.1}", String::from_utf8(k).unwrap(), min, mean, max).unwrap();
     }
 
     write!(writer, "}}").unwrap();
