@@ -17,6 +17,10 @@ pub fn execute<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::Result<(
     let mut reader = BufReader::new(file);
     let mut data = StationData::new();
 
+    // TODO - create an mpsc, pass in the sender to the thread pool, make threads do the work and
+    //  then send the result to us. We loop over the receive N times (N = chunks) to get the data
+    //  and assemble it again.
+
     let mut count = 0;
     for line in reader.lines() {
         let line = line?;
@@ -65,7 +69,8 @@ fn output<W: Write>(data: &StationData, writer: &mut W) {
         let min = data.min_for(&k);
         let mean = data.mean_for(&k);
         let max = data.max_for(&k);
-        write!(writer, "{}={:.1}/{:.1}/{:.1}", String::from_utf8(k).unwrap(), min, mean, max).unwrap();
+        let name = String::from_utf8(k).unwrap();
+        write!(writer, "{}={:.1}/{:.1}/{:.1}", name, min, mean, max).unwrap();
     }
 
     write!(writer, "}}").unwrap();
