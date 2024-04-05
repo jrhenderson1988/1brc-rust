@@ -13,6 +13,15 @@ const BUF_SIZE: usize = 1024 * 1024 * 32;
 pub fn execute<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::Result<()> {
     let start = SystemTime::now();
 
+    with_buffered_reader(path, writer)?;
+
+    let duration = SystemTime::now().duration_since(start).unwrap();
+    println!("\n\nDuration: {:?}", duration);
+
+    Ok(())
+}
+
+fn with_buffered_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::Result<()> {
     let file = File::open(path.as_ref())?;
     let mut reader = BufReader::new(file);
     let mut data = StationData::new();
@@ -30,10 +39,6 @@ pub fn execute<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::Result<(
     }
 
     output(&data, &mut writer);
-
-    let duration = SystemTime::now().duration_since(start).unwrap();
-    println!("\n\nDuration: {:?}, Lines: {}", duration, count);
-
     Ok(())
 }
 
