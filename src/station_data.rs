@@ -19,6 +19,13 @@ impl Values {
         self.count = self.count + 1;
         self.sum = self.sum + reading;
     }
+
+    pub fn extend(&mut self, other: Values) {
+        self.min = if other.min < self.min { other.min } else { self.min };
+        self.max = if other.max > self.max { other.max } else { self.max };
+        self.count = self.count + other.count;
+        self.sum = self.sum + other.sum;
+    }
 }
 
 impl Display for Values {
@@ -28,13 +35,12 @@ impl Display for Values {
 }
 
 pub struct StationData {
-    data: HashMap<String, Values>,
     data_bytes: HashMap<Vec<u8>, Values>,
 }
 
 impl StationData {
     pub fn new() -> Self {
-        Self { data: HashMap::new(), data_bytes: HashMap::new() }
+        Self { data_bytes: HashMap::new() }
     }
 
     pub fn consume_line(&mut self, line: &[u8]) {
@@ -43,6 +49,16 @@ impl StationData {
             v.add(reading);
         } else {
             self.data_bytes.insert(name, Values::new(reading));
+        }
+    }
+
+    pub fn extend(&mut self, other: StationData) {
+        for (name, values) in other.data_bytes.into_iter() {
+            if let Some(v) = self.data_bytes.get_mut(&name) {
+                v.extend(values);
+            } else {
+                self.data_bytes.insert(name, values);
+            }
         }
     }
 
@@ -77,10 +93,9 @@ impl StationData {
     fn parse_line_bytes(&self, line: &[u8]) -> (Vec<u8>, i64) {
         for i in 0..line.len() {
             let ch = line[i];
-            let mut value: u64 = 0;
             if ch == b';' {
                 let name = line[0..i].to_vec();
-                let mut value : i64 = 0;
+                let mut value: i64 = 0;
                 let mut negative = false;
                 for j in i + 1..line.len() {
                     let ch = line[j];
@@ -97,15 +112,15 @@ impl StationData {
                 return (name, if negative { -value } else { value });
             }
         }
-        panic!("invalid line");
+        panic!("invalid line (length: {}, line: {:?})", line.len(), String::from_utf8(line.to_vec()).unwrap());
     }
 }
 
-impl Display for StationData {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for k in self.data.keys() {
-            write!(f, "{} : {}", k, self.data.get(k).unwrap()).unwrap();
-        }
-        Ok(())
-    }
-}
+// impl Display for StationData {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         for k in self.data.keys() {
+//             write!(f, "{} : {}", k, self.data.get(k).unwrap()).unwrap();
+//         }
+//         Ok(())
+//     }
+// }
