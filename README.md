@@ -4,7 +4,7 @@ My attempt at the [One Billion Row Challenge](https://github.com/gunnarmorling/1
 crate to replace the standard library's `HashMap` since it is relatively slow, and tuned for 
 security.
 
-Runs in about 4-7 seconds on my M1 Macbook Pro in release mode.
+Runs in about 4.7 seconds on my M1 Macbook Pro in release mode.
 
 ## License
 

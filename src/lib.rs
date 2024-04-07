@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::mpsc;
 use std::time::SystemTime;
@@ -12,36 +12,16 @@ mod station_data;
 mod thread_pool;
 
 const BUF_SIZE: usize = 1024 * 1024 * 4;
-const USE_BUFFERED_READER: bool = false;
 const THREAD_COUNT: usize = 15;
 
 pub fn execute<P: AsRef<Path>, W: Write>(path: P, writer: W) -> io::Result<()> {
     let start = SystemTime::now();
 
-    if USE_BUFFERED_READER {
-        with_buffered_reader(path, writer)?;
-    } else {
-        with_chunked_reader(path, writer)?;
-    }
+    with_chunked_reader(path, writer)?;
 
     let duration = SystemTime::now().duration_since(start).unwrap();
     println!("\n\nDuration: {:?}", duration);
 
-    Ok(())
-}
-
-fn with_buffered_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::Result<()> {
-    let file = File::open(path.as_ref())?;
-    let reader = BufReader::new(file);
-    let mut data = StationData::new();
-
-    for line in reader.lines() {
-        let line = line?;
-        let line = line.as_bytes();
-        data.consume_line(line);
-    }
-
-    output(&data, &mut writer);
     Ok(())
 }
 
