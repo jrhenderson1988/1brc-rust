@@ -48,8 +48,7 @@ impl Worker {
 
             match message {
                 Ok(chunk) => {
-                    let data = handle_chunk(chunk);
-                    result_sender.send(data).unwrap();
+                    result_sender.send(handle_chunk(chunk)).unwrap();
                 }
                 Err(_) => {
                     break;
@@ -65,18 +64,7 @@ impl Worker {
 
 fn handle_chunk(chunk: Vec<u8>) -> StationData {
     let mut data = StationData::new();
-
-    let mut start = 0;
-    for i in 0..chunk.len() {
-        if chunk[i] == b'\n' {
-            data.consume_line(&chunk[start..i]);
-            start = i + 1;
-        }
-    }
-
-    if start < chunk.len() - 1 {
-        data.consume_line(&chunk[start..]);
-    }
+    data.consume_chunk(chunk);
 
     data
 }

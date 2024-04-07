@@ -45,11 +45,29 @@ impl StationData {
     }
 
     pub fn consume_line(&mut self, line: &[u8]) {
-        let (name, reading) = self.parse_line_bytes(line);
-        if let Some(v) = self.data.get_mut(&name) {
+        let (name, reading) = self.parse_line(line);
+        self.add_reading(name, reading);
+    }
+
+    fn add_reading(&mut self, name: &[u8], reading: i64) {
+        if let Some(v) = self.data.get_mut(name) {
             v.add(reading);
         } else {
-            self.data.insert(name, Values::new(reading));
+            self.data.insert(name.to_vec(), Values::new(reading));
+        }
+    }
+
+    pub fn consume_chunk(&mut self, chunk: Vec<u8>) {
+        let mut start = 0;
+        for i in 0..chunk.len() {
+            if chunk[i] == b'\n' {
+                self.consume_line(&chunk[start..i]);
+                start = i + 1;
+            }
+        }
+
+        if start < chunk.len() - 1 {
+            self.consume_line(&chunk[start..]);
         }
     }
 
@@ -91,11 +109,11 @@ impl StationData {
         }
     }
 
-    fn parse_line_bytes(&self, line: &[u8]) -> (Vec<u8>, i64) {
+    fn parse_line<'a>(&self, line: &'a [u8]) -> (&'a [u8], i64) {
         for i in 0..line.len() {
             let ch = line[i];
             if ch == b';' {
-                let name = line[0..i].to_vec();
+                let semicolon_pos = i;
                 let mut value: i64 = 0;
                 let mut negative = false;
                 for j in i + 1..line.len() {
@@ -110,18 +128,10 @@ impl StationData {
                         panic!("unexpected value")
                     }
                 }
-                return (name, if negative { -value } else { value });
+                return (&line[0..semicolon_pos], if negative { -value } else { value });
             }
         }
-        panic!("invalid line (length: {}, line: {:?})", line.len(), String::from_utf8(line.to_vec()).unwrap());
+        let text = String::from_utf8(line.to_vec()).unwrap();
+        panic!("invalid line (length: {}, line: {:?})", line.len(), text);
     }
 }
-
-// impl Display for StationData {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         for k in self.data.keys() {
-//             write!(f, "{} : {}", k, self.data.get(k).unwrap()).unwrap();
-//         }
-//         Ok(())
-//     }
-// }
