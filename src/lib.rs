@@ -59,43 +59,18 @@ fn with_chunked_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::
     loop {
         let read = file.read(&mut buf)?;
         if read != BUF_SIZE {
-            let mut chunk = vec![0u8; leftover_size + read];
-            for i in 0..leftover_size {
-                chunk[i] = leftover[i];
-            }
-            for i in 0..read {
-                chunk[i + leftover_size] = buf[i];
-            }
-
+            let chunk = create_chunk(&buf, read, &leftover, leftover_size);
             total_chunks += 1;
             thread_pool.execute(chunk);
             break;
         }
 
-        let mut last_newline_pos = read - 1;
-        while last_newline_pos >= 0 {
-            if buf[last_newline_pos] == b'\n' {
-                break;
-            }
-            last_newline_pos -= 1;
-        }
-
-        let mut chunk = vec![0u8; leftover_size + last_newline_pos];
-        for i in 0..leftover_size {
-            chunk[i] = leftover[i];
-        }
-        for i in 0..last_newline_pos {
-            chunk[i + leftover_size] = buf[i];
-        }
+        let last_newline_pos = find_last_newline_pos(&buf, read);
+        let chunk = create_chunk(&buf, last_newline_pos, &leftover, leftover_size);
 
         total_chunks += 1;
         thread_pool.execute(chunk);
-
-        let leftover_start = last_newline_pos + 1;
-        leftover_size = buf.len() - leftover_start;
-        for i in leftover_start..buf.len() {
-            leftover[i - leftover_start] = buf[i];
-        }
+        leftover_size = copy_leftover(&mut leftover, &buf, last_newline_pos);
     }
 
     for _ in 0..total_chunks {
@@ -105,6 +80,38 @@ fn with_chunked_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::
 
     output(&data, &mut writer);
     Ok(())
+}
+
+fn create_chunk(buf: &[u8], buf_pos: usize, leftover: &[u8], leftover_size: usize) -> Vec<u8> {
+    let mut chunk = vec![0u8; leftover_size + buf_pos];
+    for i in 0..leftover_size {
+        chunk[i] = leftover[i];
+    }
+    for i in 0..buf_pos {
+        chunk[i + leftover_size] = buf[i];
+    }
+
+    chunk
+}
+
+fn find_last_newline_pos(buf: &[u8], read: usize) -> usize {
+    let mut last_newline_pos = read - 1;
+    while last_newline_pos != 0 {
+        if buf[last_newline_pos] == b'\n' {
+            break;
+        }
+        last_newline_pos -= 1;
+    }
+    last_newline_pos
+}
+
+fn copy_leftover(leftover: &mut [u8], buf: &[u8], last_newline_pos: usize) -> usize {
+    let leftover_start = last_newline_pos + 1;
+    let leftover_size = buf.len() - leftover_start;
+    for i in leftover_start..buf.len() {
+        leftover[i - leftover_start] = buf[i];
+    }
+    leftover_size
 }
 
 fn output<W: Write>(data: &StationData, writer: &mut W) {
