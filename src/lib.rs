@@ -2,14 +2,18 @@ use std::fs::File;
 use std::io;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::Path;
+use std::sync::mpsc;
 use std::time::SystemTime;
 
 use crate::station_data::StationData;
+use crate::thread_pool::ThreadPool;
 
 mod station_data;
+mod thread_pool;
 
 const BUF_SIZE: usize = 1024 * 1024 * 16;
 const USE_BUFFERED_READER: bool = false;
+const THREAD_COUNT: usize = 10;
 
 pub fn execute<P: AsRef<Path>, W: Write>(path: P, writer: W) -> io::Result<()> {
     let start = SystemTime::now();
@@ -48,9 +52,9 @@ fn with_chunked_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::
     let mut leftover_size: usize = 0;
     let mut data = StationData::new();
 
-    // TODO - create an mpsc, pass in the sender to the thread pool, make threads do the work and
-    //  then send the result to us. We loop over the receive N times (N = chunks) to get the data
-    //  and assemble it again.
+    let mut total_chunks = 0;
+    let (result_sender, result_receiver) = mpsc::channel::<StationData>();
+    let thread_pool = ThreadPool::new(THREAD_COUNT, result_sender);
 
     loop {
         let read = file.read(&mut buf)?;
@@ -63,7 +67,8 @@ fn with_chunked_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::
                 chunk[i + leftover_size] = buf[i];
             }
 
-            data.extend(handle_chunk(chunk));
+            total_chunks += 1;
+            thread_pool.execute(chunk);
             break;
         }
 
@@ -83,8 +88,8 @@ fn with_chunked_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::
             chunk[i + leftover_size] = buf[i];
         }
 
-        let data_for_chunk = handle_chunk(chunk);
-        data.extend(data_for_chunk);
+        total_chunks += 1;
+        thread_pool.execute(chunk);
 
         let leftover_start = last_newline_pos + 1;
         leftover_size = buf.len() - leftover_start;
@@ -93,26 +98,13 @@ fn with_chunked_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::
         }
     }
 
+    for _ in 0..total_chunks {
+        let result = result_receiver.recv().unwrap();
+        data.extend(result);
+    }
+
     output(&data, &mut writer);
     Ok(())
-}
-
-fn handle_chunk(chunk: Vec<u8>) -> StationData {
-    let mut data = StationData::new();
-
-    let mut start = 0;
-    for i in 0..chunk.len() {
-        if chunk[i] == b'\n' {
-            data.consume_line(&chunk[start..i]);
-            start = i + 1;
-        }
-    }
-
-    if start < chunk.len() - 1 {
-        data.consume_line(&chunk[start..]);
-    }
-
-    data
 }
 
 fn output<W: Write>(data: &StationData, writer: &mut W) {
