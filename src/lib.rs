@@ -11,9 +11,9 @@ use crate::thread_pool::ThreadPool;
 mod station_data;
 mod thread_pool;
 
-const BUF_SIZE: usize = 1024 * 1024 * 16;
+const BUF_SIZE: usize = 1024 * 1024 * 4;
 const USE_BUFFERED_READER: bool = false;
-const THREAD_COUNT: usize = 10;
+const THREAD_COUNT: usize = 20;
 
 pub fn execute<P: AsRef<Path>, W: Write>(path: P, writer: W) -> io::Result<()> {
     let start = SystemTime::now();
