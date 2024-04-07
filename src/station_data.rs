@@ -1,5 +1,6 @@
-use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+
+use rustc_hash::FxHashMap;
 
 struct Values {
     min: i64,
@@ -35,12 +36,12 @@ impl Display for Values {
 }
 
 pub struct StationData {
-    data: HashMap<Vec<u8>, Values>,
+    data: FxHashMap<Vec<u8>, Values>,
 }
 
 impl StationData {
     pub fn new() -> Self {
-        Self { data: HashMap::new() }
+        Self { data: FxHashMap::default() }
     }
 
     pub fn consume_line(&mut self, line: &[u8]) {

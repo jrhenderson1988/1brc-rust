@@ -6,7 +6,6 @@ use crate::station_data::StationData;
 pub struct ThreadPool {
     workers: Vec<Worker>,
     sender: Option<mpsc::Sender<Vec<u8>>>,
-
 }
 
 impl ThreadPool {
