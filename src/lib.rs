@@ -13,7 +13,7 @@ mod thread_pool;
 
 const BUF_SIZE: usize = 1024 * 1024 * 4;
 const USE_BUFFERED_READER: bool = false;
-const THREAD_COUNT: usize = 20;
+const THREAD_COUNT: usize = 15;
 
 pub fn execute<P: AsRef<Path>, W: Write>(path: P, writer: W) -> io::Result<()> {
     let start = SystemTime::now();
