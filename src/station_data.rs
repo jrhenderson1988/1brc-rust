@@ -35,56 +35,56 @@ impl Display for Values {
 }
 
 pub struct StationData {
-    data_bytes: HashMap<Vec<u8>, Values>,
+    data: HashMap<Vec<u8>, Values>,
 }
 
 impl StationData {
     pub fn new() -> Self {
-        Self { data_bytes: HashMap::new() }
+        Self { data: HashMap::new() }
     }
 
     pub fn consume_line(&mut self, line: &[u8]) {
         let (name, reading) = self.parse_line_bytes(line);
-        if let Some(v) = self.data_bytes.get_mut(&name) {
+        if let Some(v) = self.data.get_mut(&name) {
             v.add(reading);
         } else {
-            self.data_bytes.insert(name, Values::new(reading));
+            self.data.insert(name, Values::new(reading));
         }
     }
 
     pub fn extend(&mut self, other: StationData) {
-        for (name, values) in other.data_bytes.into_iter() {
-            if let Some(v) = self.data_bytes.get_mut(&name) {
+        for (name, values) in other.data.into_iter() {
+            if let Some(v) = self.data.get_mut(&name) {
                 v.extend(values);
             } else {
-                self.data_bytes.insert(name, values);
+                self.data.insert(name, values);
             }
         }
     }
 
     pub fn sorted_keys(&self) -> Vec<Vec<u8>> {
-        let mut keys: Vec<Vec<u8>> = self.data_bytes.keys().map(|v| v.clone()).collect();
+        let mut keys: Vec<Vec<u8>> = self.data.keys().map(|v| v.clone()).collect();
         keys.sort();
 
         keys
     }
 
     pub fn min_for(&self, name: &[u8]) -> f64 {
-        match self.data_bytes.get(name) {
+        match self.data.get(name) {
             None => 0.0,
             Some(v) => (v.min as f64) / 10.0,
         }
     }
 
     pub fn max_for(&self, name: &[u8]) -> f64 {
-        match self.data_bytes.get(name) {
+        match self.data.get(name) {
             None => 0.0,
             Some(v) => (v.max as f64) / 10.0,
         }
     }
 
     pub fn mean_for(&self, name: &[u8]) -> f64 {
-        match self.data_bytes.get(name) {
+        match self.data.get(name) {
             None => 0.0,
             Some(v) => ((v.sum as f64) / 10.0) / (v.count as f64),
         }
