@@ -84,12 +84,8 @@ fn with_chunked_reader<P: AsRef<Path>, W: Write>(path: P, mut writer: W) -> io::
 
 fn create_chunk(buf: &[u8], buf_pos: usize, leftover: &[u8], leftover_size: usize) -> Vec<u8> {
     let mut chunk = vec![0u8; leftover_size + buf_pos];
-    for i in 0..leftover_size {
-        chunk[i] = leftover[i];
-    }
-    for i in 0..buf_pos {
-        chunk[i + leftover_size] = buf[i];
-    }
+    chunk[..leftover_size].copy_from_slice(&leftover[..leftover_size]);
+    chunk[leftover_size..leftover_size + buf_pos].copy_from_slice(&buf[0..buf_pos]);
 
     chunk
 }
@@ -108,9 +104,8 @@ fn find_last_newline_pos(buf: &[u8], read: usize) -> usize {
 fn copy_leftover(leftover: &mut [u8], buf: &[u8], last_newline_pos: usize) -> usize {
     let leftover_start = last_newline_pos + 1;
     let leftover_size = buf.len() - leftover_start;
-    for i in leftover_start..buf.len() {
-        leftover[i - leftover_start] = buf[i];
-    }
+    leftover[0..leftover_size].copy_from_slice(&buf[leftover_start..]);
+
     leftover_size
 }
 
